@@ -30,6 +30,12 @@ services:
       POSTGRES_USER: zabbixdbuser
       # Database password (replace with yours)
       POSTGRES_PASSWORD: FmuHw92hiFZfJNzKvzgNwsf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
 
   zabbix:
@@ -51,7 +57,8 @@ services:
       - "10051:10051"
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   web:
     # Image tag (replace with yours)
@@ -89,8 +96,10 @@ services:
       - "traefik.http.middlewares.compresstraefik.compress=true"
     restart: unless-stopped
     depends_on:
-      - postgres
-      - zabbix
+      postgres:
+        condition: service_healthy
+      traefik:
+        condition: service_healthy
 
   agent:
     # Image tag (replace with yours)
@@ -192,5 +201,7 @@ services:
       POSTGRES_PASSWORD: FmuHw92hiFZfJNzKvzgNwsf
     restart: unless-stopped
     depends_on:
-      - postgres
-      - zabbix
+      postgres:
+        condition: service_healthy
+      web:
+        condition: service_healthy
