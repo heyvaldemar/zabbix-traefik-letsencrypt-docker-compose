@@ -40,7 +40,7 @@ services:
 
   zabbix:
     # Image tag (replace with yours)
-    image: zabbix/zabbix-server-pgsql:6.0.7-ubuntu
+    image: zabbix/zabbix-server-pgsql:6.2.0-ubuntu
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
@@ -103,7 +103,7 @@ services:
 
   agent:
     # Image tag (replace with yours)
-    image: zabbix/zabbix-agent:6.2.0-ubuntu
+    image: zabbix/zabbix-agent2:6.2.0-ubuntu
     environment:
       # Zabbix Hostname (replace with yours)
       # Set as DNS name on Zabbix server host configuration screen to make checks of Zabbix server itself
