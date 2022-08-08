@@ -20,7 +20,7 @@ volumes:
 services:
   postgres:
     # Image tag (replace with yours)
-    image: postgres:13.2
+    image: postgres:14
     volumes:
       - zabbix-postgres:/var/lib/postgresql/data
     environment:
@@ -40,7 +40,7 @@ services:
 
   zabbix:
     # Image tag (replace with yours)
-    image: zabbix/zabbix-server-pgsql:ubuntu-5.2.6
+    image: zabbix/zabbix-server-pgsql:6.0.7-ubuntu
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
@@ -62,7 +62,7 @@ services:
 
   web:
     # Image tag (replace with yours)
-    image: zabbix/zabbix-web-nginx-pgsql:ubuntu-5.2.6
+    image: zabbix/zabbix-web-nginx-pgsql:ubuntu-6.2.0
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
@@ -103,7 +103,7 @@ services:
 
   agent:
     # Image tag (replace with yours)
-    image: zabbix/zabbix-agent:ubuntu-5.2.6
+    image: zabbix/zabbix-agent:6.2.0-ubuntu
     environment:
       # Zabbix Hostname (replace with yours)
       # Set as DNS name on Zabbix server host configuration screen to make checks of Zabbix server itself
@@ -118,7 +118,7 @@ services:
 
   traefik:
     # Image tag (replace with yours)
-    image: traefik:2.4
+    image: traefik:2.8
     command:
       - "--log.level=WARN"
       - "--accesslog=true"
@@ -175,7 +175,7 @@ services:
 
   backups:
     # Image tag (replace with yours)
-    image: postgres:13.2
+    image: postgres:14
     # Database backups prune interval (replace with yours). Default is 7 days.
     # find /srv/zabbix-postgres/backups -type f -mtime +7 | xargs rm -f
 
