@@ -6,7 +6,7 @@ Run `zabbix-restore-database.sh` to restore database if needed.
 
 Deploy Zabbix server with a Docker Compose using the command:
 
-`docker-compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d`
+`docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d`
 
 Detailed installation guide can be found on my [website](https://www.heyvaldemar.com/install-zabbix-with-docker-compose/).
 
