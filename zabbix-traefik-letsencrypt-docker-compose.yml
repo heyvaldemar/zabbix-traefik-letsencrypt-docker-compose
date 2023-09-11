@@ -84,7 +84,7 @@ services:
     networks:
       - zabbix-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
+      test: [ "CMD", "pg_isready", "-q", "-d", "${ZABBIX_DB_NAME}", "-U", "${ZABBIX_DB_USER}" ]
       interval: 10s
       timeout: 5s
       retries: 3
