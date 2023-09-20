@@ -101,21 +101,14 @@ services:
       POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
     networks:
       - zabbix-network
-      - traefik-network
+    ports:
+      - "10051:10051"
     healthcheck:
       test: grep -qr "zabbix_server" /proc/*/status || exit 1
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 90s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.zabbix-server.rule=Host(`${ZABBIX_SERVER_HOSTNAME}`)"
-      - "traefik.http.routers.zabbix-server.service=zabbix-server"
-      - "traefik.http.routers.zabbix-server.entrypoints=zabbix"
-      - "traefik.http.services.zabbix-server.loadbalancer.server.port=10051"
-      - "traefik.http.routers.zabbix-server.tls.certresolver=letsencrypt"
-      - "traefik.docker.network=traefik-network"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -185,7 +178,6 @@ services:
       - "--entryPoints.ping.address=:8082"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
-      - "--entryPoints.zabbix.address=:10051"
       - "--providers.docker=true"
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
       - "--providers.docker.exposedByDefault=false"
@@ -204,7 +196,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "10051:10051"
     healthcheck:
       test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
       interval: 10s
