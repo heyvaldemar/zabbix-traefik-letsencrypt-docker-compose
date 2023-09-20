@@ -101,14 +101,23 @@ services:
       POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
     networks:
       - zabbix-network
-    ports:
-      - "10051:10051"
+      - traefik-network
     healthcheck:
       test: grep -qr "zabbix_server" /proc/*/status || exit 1
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 90s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.zabbix-server-tcp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.zabbix-server-tcp.service=zabbix-server-tcp"
+      - "traefik.tcp.routers.zabbix-server-tcp.entrypoints=zabbix-tcp"
+      - "traefik.tcp.services.zabbix-server-tcp.loadbalancer.server.port=10051"
+      - "traefik.udp.routers.zabbix-server-udp.service=zabbix-server-udp"
+      - "traefik.udp.routers.zabbix-server-udp.entrypoints=zabbix-udp"
+      - "traefik.udp.services.zabbix-server-udp.loadbalancer.server.port=10051"
+      - "traefik.docker.network=traefik-network"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -157,7 +166,7 @@ services:
   zabbix-agent:
     image: ${ZABBIX_AGENT_IMAGE_TAG}
     environment:
-      ZBX_HOSTNAME: zabbix-server
+      ZBX_HOSTNAME: Zabbix server
       ZBX_SERVER_HOST: zabbix-server
     networks:
       - zabbix-network
@@ -178,6 +187,8 @@ services:
       - "--entryPoints.ping.address=:8082"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.zabbix-tcp.address=:10051"
+      - "--entryPoints.zabbix-udp.address=:10051/udp"
       - "--providers.docker=true"
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
       - "--providers.docker.exposedByDefault=false"
@@ -196,6 +207,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "10050:10050"
+      - "10051:10051"
     healthcheck:
       test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
       interval: 10s
