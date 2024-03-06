@@ -99,6 +99,7 @@ services:
       POSTGRES_DB: ${ZABBIX_DB_NAME}
       POSTGRES_USER: ${ZABBIX_DB_USER}
       POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
+      ZBX_CACHESIZE: ${ZABBIX_CACHESIZE}
     networks:
       - zabbix-network
       - traefik-network
