@@ -1,6 +1,6 @@
 # Zabbix with Let's Encrypt Using Docker Compose
 
-[![Deployment Verification](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/00-deployment-verification.yml/badge.svg)](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions)
+[![Deployment Verification](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg)](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions)
 
 The badge displayed on my repository indicates the status of the deployment verification workflow as executed on the latest commit to the main branch.
 
@@ -8,7 +8,9 @@ The badge displayed on my repository indicates the status of the deployment veri
 
 📙 The complete installation guide is available on my [website](https://www.heyvaldemar.com/install-zabbix-using-docker-compose/).
 
-❗ Change variables in the `.env` to meet your requirements.
+❗ Copy `.env.example` to `.env` and fill in the required values (hostnames, Let's Encrypt email, and generated passwords) before deploying. `.env` is gitignored — it holds your secrets and never belongs in git. Image versions are **not** set in `.env`: the tested `tag@sha256:digest` pins live in the compose file's `x-images` block, so `git pull` alone delivers the version combination this repository has tested. Setting an `*_IMAGE_TAG` variable in `.env` overrides the default when you deliberately want a different version.
+
+🔄 **Upgrading an existing deployment from Zabbix 6.4:** back up the database first (`docker compose logs backups` shows the schedule; trigger a manual `pg_dump` for zero data-loss tolerance). Zabbix supports direct upgrades: on the first start with the 7.0 image the server migrates the database schema automatically, and there is no downgrade path other than restoring the backup. All three Zabbix images (server, web, agent) move together.
 
 💡 Note that the `.env` file should be in the same directory as `zabbix-traefik-letsencrypt-docker-compose.yml`.
 

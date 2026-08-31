@@ -18,7 +18,6 @@ ZABBIX_AGENT_CONTAINER=$(docker ps -aqf "name=zabbix-agent")
 ZABBIX_BACKUPS_CONTAINER=$(docker ps -aqf "name=zabbix-backups")
 ZABBIX_DB_NAME="zabbixdb"
 ZABBIX_DB_USER="zabbixdbuser"
-POSTGRES_PASSWORD=$(docker exec $ZABBIX_BACKUPS_CONTAINER printenv PGPASSWORD)
 BACKUP_PATH="/srv/zabbix-postgres/backups/"
 
 echo "--> All available database backups:"
@@ -32,7 +31,7 @@ echo "--> Copy and paste the backup name from the list above to restore database
 --> Example: zabbix-postgres-backup-YYYY-MM-DD_hh-mm.gz"
 echo -n "--> "
 
-read SELECTED_DATABASE_BACKUP
+read -r SELECTED_DATABASE_BACKUP
 
 echo "--> $SELECTED_DATABASE_BACKUP was selected"
 

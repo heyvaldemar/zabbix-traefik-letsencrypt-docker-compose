@@ -1,3 +1,17 @@
+# Image pins live HERE, as interpolation defaults, so `git pull` (or
+# re-downloading this file) delivers the exact version combination this
+# repository has tested — no .env editing required. Setting the matching
+# variable in .env overrides the default for anyone who wants to pin
+# differently; .env itself carries only secrets and deliberate overrides.
+# CI (Trivy scans, check-pin-freshness, the ephemeral test .env) reads
+# the pins from these lines — this block is the single source of truth.
+x-images:
+  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:3.7@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf}
+  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:15@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f5da8f3acbfe4957}
+  zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:7.0.30-ubuntu@sha256:de9b1471dff77298d5a709b89f275fc5b9ba343058d8deee1f55c7ca9830bb0b}
+  zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:7.0.30-ubuntu@sha256:1e68b65358f6464421f94a6ca627220066a8998d04f6360176b7ef6d984a6031}
+  zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:7.0.30-ubuntu@sha256:504f4bda39dcd0d1e5b120e61966121d21669cf737348a9a47ae04bd32db9f53}
+
 networks:
   zabbix-network:
     external: true
@@ -12,17 +26,17 @@ volumes:
 
 services:
   postgres:
-    image: ${ZABBIX_POSTGRES_IMAGE_TAG}
+    image: *postgres-image
     volumes:
       - zabbix-postgres:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: ${ZABBIX_DB_NAME}
-      POSTGRES_USER: ${ZABBIX_DB_USER}
-      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
+      POSTGRES_DB: ${ZABBIX_DB_NAME:-zabbixdb}
+      POSTGRES_USER: ${ZABBIX_DB_USER:-zabbixdbuser}
+      POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD:?set in .env - see .env.example for generation command}
     networks:
       - zabbix-network
     healthcheck:
-      test: [ "CMD", "pg_isready", "-q", "-d", "${ZABBIX_DB_NAME}", "-U", "${ZABBIX_DB_USER}" ]
+      test: [ "CMD", "pg_isready", "-q", "-d", "${ZABBIX_DB_NAME:-zabbixdb}", "-U", "${ZABBIX_DB_USER:-zabbixdbuser}" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -30,14 +44,14 @@ services:
     restart: unless-stopped
 
   zabbix-server:
-    image: ${ZABBIX_SERVER_IMAGE_TAG}
+    image: *zabbix-server-image
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
-      POSTGRES_DB: ${ZABBIX_DB_NAME}
-      POSTGRES_USER: ${ZABBIX_DB_USER}
+      POSTGRES_DB: ${ZABBIX_DB_NAME:-zabbixdb}
+      POSTGRES_USER: ${ZABBIX_DB_USER:-zabbixdbuser}
       POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
-      ZBX_CACHESIZE: ${ZABBIX_CACHESIZE}
+      ZBX_CACHESIZE: ${ZABBIX_CACHESIZE:-1G}
     networks:
       - zabbix-network
       - traefik-network
@@ -72,15 +86,15 @@ services:
         condition: service_healthy
 
   zabbix-dashboard:
-    image: ${ZABBIX_WEB_IMAGE_TAG}
+    image: *zabbix-web-image
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
-      POSTGRES_DB: ${ZABBIX_DB_NAME}
-      POSTGRES_USER: ${ZABBIX_DB_USER}
+      POSTGRES_DB: ${ZABBIX_DB_NAME:-zabbixdb}
+      POSTGRES_USER: ${ZABBIX_DB_USER:-zabbixdbuser}
       POSTGRES_PASSWORD: ${ZABBIX_DB_PASSWORD}
       ZBX_SERVER_HOST: zabbix-server
-      PHP_TZ: ${ZABBIX_TIMEZONE}
+      PHP_TZ: ${ZABBIX_TIMEZONE:-UTC}
     networks:
       - zabbix-network
       - traefik-network
@@ -94,7 +108,7 @@ services:
       # Enable Traefik for this container
       - "traefik.enable=true"
       # Match incoming requests on a specific hostname
-      - "traefik.http.routers.zabbix-dashboard.rule=Host(`${ZABBIX_DASHBOARD_HOSTNAME}`)"
+      - "traefik.http.routers.zabbix-dashboard.rule=Host(`${ZABBIX_DASHBOARD_HOSTNAME:?set in .env - see .env.example}`)"
       # Assign the router to a named Traefik service
       - "traefik.http.routers.zabbix-dashboard.service=zabbix-dashboard"
       # Use the 'websecure' (HTTPS) entry point
@@ -123,7 +137,7 @@ services:
         condition: service_healthy
 
   zabbix-agent:
-    image: ${ZABBIX_AGENT_IMAGE_TAG}
+    image: *zabbix-agent-image
     environment:
       ZBX_HOSTNAME: Zabbix server
       ZBX_SERVER_HOST: zabbix-server
@@ -135,10 +149,10 @@ services:
       - zabbix-server
 
   traefik:
-    image: ${TRAEFIK_IMAGE_TAG}
+    image: *traefik-image
     command:
       # Set the log level (DEBUG, INFO, WARN, ERROR)
-      - "--log.level=${TRAEFIK_LOG_LEVEL}"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
       # Enable the built-in API and web-based dashboard
       - "--api.dashboard=true"
       # Enable the /ping endpoint so we can health-check Traefik
@@ -167,7 +181,7 @@ services:
       # Use ACME (Let's Encrypt) to generate/renew certificates via TLS challenge
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       # The email address used by Let's Encrypt for renewal notices
-      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:?set in .env - see .env.example}"
       # The file where ACME certificates are stored inside the container
       - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
       # Enable Prometheus metrics
@@ -198,14 +212,14 @@ services:
       # Enable Traefik for this container
       - "traefik.enable=true"
       # A router to expose the Traefik dashboard
-      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME}`)"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME:?set in .env - see .env.example}`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.service=api@internal"
       # Basic Authentication for the Traefik dashboard
       - "traefik.http.routers.dashboard.middlewares=authtraefik"
-      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH:?set in .env - see .env.example for htpasswd generation}"
       # Specify the internal server port to the dashboard service
       - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
       # Pass the original Host header to the backend
@@ -213,25 +227,25 @@ services:
     restart: unless-stopped
 
   backups:
-    image: ${ZABBIX_POSTGRES_IMAGE_TAG}
+    image: *postgres-image
     command: >-
-      sh -c 'sleep $ZABBIX_BACKUP_INIT_SLEEP &&
+      sh -c 'sleep $$ZABBIX_BACKUP_INIT_SLEEP &&
       while true; do
-        pg_dump -h postgres -p 5432 -d $ZABBIX_DB_NAME -U $ZABBIX_DB_USER | gzip > $ZABBIX_POSTGRES_BACKUPS_PATH/$ZABBIX_POSTGRES_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").gz &&
-        find $ZABBIX_POSTGRES_BACKUPS_PATH -type f -mtime +$ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
-        sleep $ZABBIX_BACKUP_INTERVAL; done'
+        pg_dump -h postgres -p 5432 -d $$ZABBIX_DB_NAME -U $$ZABBIX_DB_USER | gzip > $$ZABBIX_POSTGRES_BACKUPS_PATH/$$ZABBIX_POSTGRES_BACKUP_NAME-$$(date "+%Y-%m-%d_%H-%M").gz &&
+        find $$ZABBIX_POSTGRES_BACKUPS_PATH -type f -mtime +$$ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
+        sleep $$ZABBIX_BACKUP_INTERVAL; done'
     volumes:
       - zabbix-postgres-backup:/var/lib/postgresql/data
-      - zabbix-database-backups:${ZABBIX_POSTGRES_BACKUPS_PATH}
+      - zabbix-database-backups:${ZABBIX_POSTGRES_BACKUPS_PATH:-/srv/zabbix-postgres/backups}
     environment:
-      ZABBIX_DB_NAME: ${ZABBIX_DB_NAME}
-      ZABBIX_DB_USER: ${ZABBIX_DB_USER}
+      ZABBIX_DB_NAME: ${ZABBIX_DB_NAME:-zabbixdb}
+      ZABBIX_DB_USER: ${ZABBIX_DB_USER:-zabbixdbuser}
       PGPASSWORD: ${ZABBIX_DB_PASSWORD}
-      ZABBIX_BACKUP_INIT_SLEEP: ${ZABBIX_BACKUP_INIT_SLEEP}
-      ZABBIX_BACKUP_INTERVAL: ${ZABBIX_BACKUP_INTERVAL}
-      ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS: ${ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS}
-      ZABBIX_POSTGRES_BACKUPS_PATH: ${ZABBIX_POSTGRES_BACKUPS_PATH}
-      ZABBIX_POSTGRES_BACKUP_NAME: ${ZABBIX_POSTGRES_BACKUP_NAME}
+      ZABBIX_BACKUP_INIT_SLEEP: ${ZABBIX_BACKUP_INIT_SLEEP:-30m}
+      ZABBIX_BACKUP_INTERVAL: ${ZABBIX_BACKUP_INTERVAL:-24h}
+      ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS: ${ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS:-7}
+      ZABBIX_POSTGRES_BACKUPS_PATH: ${ZABBIX_POSTGRES_BACKUPS_PATH:-/srv/zabbix-postgres/backups}
+      ZABBIX_POSTGRES_BACKUP_NAME: ${ZABBIX_POSTGRES_BACKUP_NAME:-zabbix-postgres-backup}
     networks:
       - zabbix-network
     restart: unless-stopped

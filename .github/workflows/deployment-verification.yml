@@ -1,0 +1,276 @@
+name: Deployment Verification
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly rebuild to catch upstream image drift.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: deployment-verification-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint shell scripts and workflow YAML
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: ShellCheck
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt \
+            koalaman/shellcheck-alpine:stable \
+            shellcheck ./*.sh
+
+      - name: actionlint (GitHub Actions workflow linting)
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt \
+            rhysd/actionlint:1.7.12 \
+            -color
+
+  scan-trivy:
+    name: Scan pinned upstream image with Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Findings surface in the Security tab for triage; they don't block CI.
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      # Image refs are read from the compose file's x-images defaults at
+      # runtime — single source of truth.
+      fail-fast: false
+      matrix:
+        include:
+          - name: postgres
+            env_var: ZABBIX_POSTGRES_IMAGE_TAG
+            skip_files: "usr/local/bin/gosu,/usr/local/bin/gosu,etc/ssl/private/ssl-cert-snakeoil.key,/etc/ssl/private/ssl-cert-snakeoil.key"
+          - name: zabbix-server
+            env_var: ZABBIX_SERVER_IMAGE_TAG
+          - name: zabbix-web
+            env_var: ZABBIX_WEB_IMAGE_TAG
+          - name: zabbix-agent
+            env_var: ZABBIX_AGENT_IMAGE_TAG
+          - name: traefik
+            env_var: TRAEFIK_IMAGE_TAG
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read pinned ${{ matrix.name }} image from the compose file
+        id: pin
+        env:
+          ENV_VAR: ${{ matrix.env_var }}
+        run: |
+          image="$(grep -oE "\\$\\{${ENV_VAR}:-[^}]+\\}" zabbix-traefik-letsencrypt-docker-compose.yml | head -1 | sed -E "s/^\\$\\{${ENV_VAR}:-//; s/\\}$//")"
+          if [ -z "$image" ]; then
+            echo "${ENV_VAR} default not found in the compose x-images block" >&2
+            exit 1
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Trivy scan of ${{ matrix.name }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.pin.outputs.image }}
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          skip-files: ${{ matrix.skip_files }}
+
+      - name: Upload Trivy SARIF (${{ matrix.name }}) to GitHub Security
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif
+          category: trivy-${{ matrix.name }}
+
+  check-pin-freshness:
+    name: Check pinned images for upstream drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Weekly cron + manual dispatch only: a new upstream release is not
+    # actionable inside an unrelated PR. On the cron the failure lands as a
+    # workflow-failure notification to the maintainer — a stale pin must
+    # not sit unnoticed. Dependabot cannot see these pins (they are compose
+    # interpolation defaults, not Dockerfile literals), so this job is the
+    # actual tracking mechanism.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare pinned digests against what each tag resolves to now
+        run: |
+          status=0
+          for var in ZABBIX_POSTGRES_IMAGE_TAG ZABBIX_SERVER_IMAGE_TAG ZABBIX_WEB_IMAGE_TAG ZABBIX_AGENT_IMAGE_TAG TRAEFIK_IMAGE_TAG; do
+            pin="$(grep -oE "\\$\\{${var}:-[^}]+\\}" zabbix-traefik-letsencrypt-docker-compose.yml | head -1 | sed -E "s/^\\$\\{${var}:-//; s/\\}$//")"
+            ref="${pin%%@*}"
+            pinned_digest="${pin##*@}"
+            current_digest="$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r .digest)"
+            if [ "$pinned_digest" != "$current_digest" ]; then
+              echo "::error::${var} digest drift: pinned ${pinned_digest}, but ${ref} now resolves to ${current_digest}"
+              status=1
+            else
+              echo "${var} OK (${ref})"
+            fi
+          done
+          exit "$status"
+
+      - name: Compare pinned Zabbix version against its release line
+        # Pinned to the 7.0 LTS line on purpose (EOL 2029) — compare against
+        # the latest patch of THAT line via endoflife.date, and fail if the
+        # line itself has gone end-of-life.
+        run: |
+          pin="$(grep -oE '\$\{ZABBIX_SERVER_IMAGE_TAG:-[^}]+\}' zabbix-traefik-letsencrypt-docker-compose.yml | head -1 | sed -E 's/^\$\{ZABBIX_SERVER_IMAGE_TAG:-//; s/\}$//')"
+          ref="${pin%%@*}"
+          tag="${ref##*:}"
+          pinned_version="${tag%-ubuntu}"
+          cycle="${pinned_version%.*}"
+          eol_json="$(curl -fsSL --retry 3 "https://endoflife.date/api/zabbix.json")"
+          latest="$(echo "$eol_json" | jq -r --arg c "$cycle" '.[] | select(.cycle==$c) | .latest')"
+          eol="$(echo "$eol_json" | jq -r --arg c "$cycle" '.[] | select(.cycle==$c) | .eol')"
+          if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+            echo "::error::Could not determine the latest Zabbix release for line ${cycle}"
+            exit 1
+          fi
+          if [ "$pinned_version" != "$latest" ]; then
+            echo "::error::Zabbix pin is behind its line: pinned ${pinned_version}, latest in ${cycle} is ${latest}"
+            exit 1
+          fi
+          if [ "$(date -d "$eol" +%s)" -le "$(date +%s)" ]; then
+            echo "::error::Zabbix ${cycle} line is end-of-life since ${eol} — move to a supported line"
+            exit 1
+          fi
+          echo "Zabbix pin ${pinned_version} is current in line ${cycle} (EOL ${eol})"
+
+      - name: Compare pinned Traefik minor against the latest release
+        run: |
+          pin="$(grep -oE '\$\{TRAEFIK_IMAGE_TAG:-[^}]+\}' zabbix-traefik-letsencrypt-docker-compose.yml | head -1 | sed -E 's/^\$\{TRAEFIK_IMAGE_TAG:-//; s/\}$//')"
+          ref="${pin%%@*}"
+          pinned_minor="${ref##*:}"
+          latest="$(curl -fsSL --retry 3 https://api.github.com/repos/traefik/traefik/releases/latest | jq -r .tag_name)"
+          latest="${latest#v}"
+          if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+            echo "::error::Could not determine the latest Traefik release from the GitHub API"
+            exit 1
+          fi
+          case "$latest" in
+            "$pinned_minor".*)
+              echo "Traefik pin ${pinned_minor} matches the latest release line (${latest})"
+              ;;
+            *)
+              echo "::error::Traefik pin is behind: pinned minor ${pinned_minor}, latest release is ${latest}"
+              exit 1
+              ;;
+          esac
+
+  deploy-and-test:
+    name: docker compose up + Zabbix API + HTTPS smoke
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    env:
+      NETWORK_ONE: zabbix-network
+      NETWORK_TWO: traefik-network
+      DOCKER_COMPOSE_FILE: zabbix-traefik-letsencrypt-docker-compose.yml
+      APP_HOSTNAME: dashboard.zabbix.heyvaldemar.net
+      APP_TRAEFIK_HOSTNAME: traefik.zabbix.heyvaldemar.net
+      COMPOSE_PROJECT_NAME: zabbix
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Create necessary Docker networks
+        run: |
+          docker network create "$NETWORK_ONE" || true
+          docker network create "$NETWORK_TWO" || true
+
+      - name: Generate test .env with ephemeral credentials
+        # The real .env is gitignored. CI generates throwaway credentials so
+        # `docker compose up` succeeds without committing secrets to the
+        # repo. No *_IMAGE_TAG values on purpose: the compose file's
+        # x-images defaults apply, so CI always tests exactly the pins the
+        # template ships to users who run it unmodified.
+        run: |
+          cat > .env <<EOF
+          TRAEFIK_ACME_EMAIL=ci@example.com
+          TRAEFIK_HOSTNAME=${APP_TRAEFIK_HOSTNAME}
+          TRAEFIK_BASIC_AUTH=traefikadmin:\$\$2y\$\$10\$\$sMzJfirKC75x/hVpiINeZOiSm.Jkity9cn4KwNkRvO7hSQVFc5FLO
+          ZABBIX_DB_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+          ZABBIX_DASHBOARD_HOSTNAME=${APP_HOSTNAME}
+          EOF
+          echo "Generated ephemeral .env for CI run"
+
+      - name: Start up services using Docker Compose
+        run: docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" up -d
+
+      - name: Modify /etc/hosts for internal routing
+        run: |
+          echo "127.0.0.1 $APP_HOSTNAME" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 $APP_TRAEFIK_HOSTNAME" | sudo tee -a /etc/hosts
+
+      - name: Print Docker Compose services status
+        run: docker ps
+
+      - name: Wait for the Zabbix server to report healthy
+        run: |
+          echo "Waiting for the zabbix-server container healthcheck..."
+          # $COMPOSE_PROJECT_NAME and the inspect template are expanded by
+          # the inner bash -c / docker, not the outer shell.
+          # shellcheck disable=SC2016
+          timeout 5m bash -c 'until [ "$(docker inspect -f "{{.State.Health.Status}}" "$(docker ps -qf name=${COMPOSE_PROJECT_NAME}-zabbix-server)")" = "healthy" ]; do
+            echo "Still starting..."
+            sleep 10
+          done'
+
+      - name: Verify the Zabbix web API answers through Traefik
+        # apiinfo.version through the full chain (Traefik -> nginx -> PHP)
+        # proves the shipped configuration produces a working instance, not
+        # just started containers.
+        run: |
+          # shellcheck disable=SC2016
+          timeout 5m bash -c 'while ! curl -fsk -X POST "https://$APP_HOSTNAME/api_jsonrpc.php" -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"method\":\"apiinfo.version\",\"params\":{},\"id\":1}" | grep -q "\"result\""; do
+            echo "Waiting for the Zabbix web API..."
+            sleep 10
+          done'
+          curl -fsk -X POST "https://$APP_HOSTNAME/api_jsonrpc.php" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}'
+          echo
+
+      - name: Wait for the Traefik dashboard to be ready
+        run: |
+          # shellcheck disable=SC2016
+          timeout 5m bash -c 'while ! curl -fsSLk --write-out "%{http_code}" --output /dev/null "https://$APP_TRAEFIK_HOSTNAME" | grep -E "200|401"; do
+            echo "Waiting for the dashboard to be ready..."
+            sleep 10
+          done'
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" logs
+
+      - name: Shutdown Docker Compose services
+        if: always()
+        run: docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" down
