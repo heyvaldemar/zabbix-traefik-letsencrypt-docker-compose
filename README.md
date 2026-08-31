@@ -1,138 +1,195 @@
-# Zabbix with Let's Encrypt Using Docker Compose
+# Zabbix + Traefik + Let's Encrypt — Docker Compose
 
-[![Deployment Verification](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg)](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions)
+[![Deployment Verification](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg?branch=main)](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The badge displayed on my repository indicates the status of the deployment verification workflow as executed on the latest commit to the main branch.
+## Contents
 
-**Passing**: This means the most recent commit has successfully passed all deployment checks, confirming that the Docker Compose setup functions correctly as designed.
+- [Why this stack?](#why-this-stack)
+- [Prerequisites](#prerequisites)
+- [Getting started](#getting-started)
+- [Features](#features)
+  - [Typical use cases](#typical-use-cases)
+- [Supply chain trust](#supply-chain-trust)
+- [Production checklist](#production-checklist)
+- [Backups](#backups)
+- [Testing](#testing)
+- [Security Notes](#security-notes)
+- [About the maintainer](#about-the-maintainer)
 
-📙 The complete installation guide is available on my [website](https://www.heyvaldemar.com/install-zabbix-using-docker-compose/).
+This repository deploys a full **Zabbix 7.0 LTS** monitoring stack — server, nginx web frontend, and agent2 — behind **Traefik** with automatic **Let's Encrypt TLS**, backed by **PostgreSQL**, with a scheduled **backup container** and a companion **restore script**. Agent traffic (TCP and UDP 10051) is routed through dedicated Traefik entrypoints. One `docker compose up` away from production-shaped infrastructure monitoring at `https://your-domain`.
 
-❗ Copy `.env.example` to `.env` and fill in the required values (hostnames, Let's Encrypt email, and generated passwords) before deploying. `.env` is gitignored — it holds your secrets and never belongs in git. Image versions are **not** set in `.env`: the tested `tag@sha256:digest` pins live in the compose file's `x-images` block, so `git pull` alone delivers the version combination this repository has tested. Setting an `*_IMAGE_TAG` variable in `.env` overrides the default when you deliberately want a different version.
+📙 Full narrative installation guide on the blog: [heyvaldemar.com/install-zabbix-using-docker-compose/](https://www.heyvaldemar.com/install-zabbix-using-docker-compose/).
 
-🔄 **Upgrading an existing deployment from Zabbix 6.4:** back up the database first (`docker compose logs backups` shows the schedule; trigger a manual `pg_dump` for zero data-loss tolerance). Zabbix supports direct upgrades: on the first start with the 7.0 image the server migrates the database schema automatically, and there is no downgrade path other than restoring the backup. All three Zabbix images (server, web, agent) move together.
+## Why this stack?
 
-💡 Note that the `.env` file should be in the same directory as `zabbix-traefik-letsencrypt-docker-compose.yml`.
+| Need | This stack | Manual install | Kubernetes | Other compose examples |
+|------|-----------|----------------|------------|------------------------|
+| Ready to deploy in <10 min | ✅ | ❌ hours of setup | ✅ if K8s is already running | Often |
+| TLS via Let's Encrypt, auto-renewed | ✅ Traefik ACME built-in | Manual certbot | Via cert-manager | Rare |
+| LTS line (supported to 2029) | ✅ 7.0 LTS pinned | Your choice | Varies | Often EOL versions |
+| Server + web + agent2 wired together | ✅ | Three installs | ✅ | Varies |
+| Agent TCP/UDP routed via proxy entrypoints | ✅ | Manual firewalling | Service/LB config | Rare |
+| Scheduled DB backups + pruning | ✅ | Manual cron | External | Rare |
+| Upstream images pinned by `sha256` digest | ✅ | N/A | Depends | Rare |
+| Weekly pin-freshness check in CI | ✅ LTS-line aware | N/A | Depends | Rare |
+| CI-verified deployment on every push | ✅ web API answers | N/A | Varies | Rare |
+| Credentials via env (never committed) | ✅ | N/A | K8s Secrets | Often committed plaintext |
 
-Create networks for your services before deploying the configuration using the commands:
+Six moving parts (Traefik + server + web + agent + Postgres + backups). No Kubernetes prerequisites, no manual certificate management.
 
-`docker network create traefik-network`
+## Prerequisites
 
-`docker network create zabbix-network`
+Before you start, you need:
 
-Deploy Zabbix using Docker Compose:
+- **A Linux server** with a public IP. Tested on Ubuntu 22.04 LTS+ and Debian 12+. Local Mac/Windows works for dev; production is Linux.
+- **Docker Engine 24+ and Docker Compose 2.20+.** Quick check: `docker version` and `docker compose version`.
+- **A domain you control,** with two `A` records pointing at your server's public IP — one for the Zabbix dashboard (e.g. `dashboard.zabbix.example.com`), one for the Traefik dashboard (e.g. `traefik.zabbix.example.com`). DNS must propagate before deploy or the Let's Encrypt TLS-ALPN challenge will fail.
+- **Ports 80, 443, and 10051 open** on the server's firewall — 10051 (TCP/UDP) receives data from remote Zabbix agents.
+- **~2 GB free RAM and 1 free CPU** for the running stack; Postgres and the server cache grow with the number of monitored hosts.
 
-`docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d`
+## Getting started
+
+```bash
+# 1. Clone
+git clone https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose
+cd zabbix-traefik-letsencrypt-docker-compose
+
+# 2. Create the two Docker networks the stack expects
+docker network create traefik-network
+docker network create zabbix-network
+
+# 3. Copy the environment template and fill in required values
+cp .env.example .env
+$EDITOR .env
+# ^ Required: ZABBIX_DB_PASSWORD, ZABBIX_DASHBOARD_HOSTNAME,
+#   TRAEFIK_HOSTNAME, TRAEFIK_ACME_EMAIL, TRAEFIK_BASIC_AUTH.
+#   See .env.example for generation commands.
+
+# 4. Deploy
+docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d
+```
+
+Within a couple of minutes `https://${ZABBIX_DASHBOARD_HOSTNAME}` serves the Zabbix login page with a fresh Let's Encrypt certificate. Default credentials are Zabbix's stock `Admin` / `zabbix` — change them immediately (see the checklist).
+
+### What success looks like
+
+```bash
+# All services healthy (server schema init takes a minute on first boot):
+docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix ps
+
+# The web API answers with the running version:
+curl -fsS -X POST "https://${ZABBIX_DASHBOARD_HOSTNAME}/api_jsonrpc.php" \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}'
+# Expected: {"jsonrpc":"2.0","result":"7.0.30","id":1}
+
+# Traefik issued a certificate:
+docker compose -p zabbix logs traefik | grep -i "adding certificate"
+
+# First backup lands after ZABBIX_BACKUP_INIT_SLEEP (default 30m):
+docker compose -p zabbix logs backups | tail -3
+```
+
+### Common first-deploy issues
+
+- **Cert issuance fails.** DNS hasn't propagated or port 80 isn't reachable from the internet. Confirm with `dig +short ${ZABBIX_DASHBOARD_HOSTNAME}` and `curl -I http://${ZABBIX_DASHBOARD_HOSTNAME}` from outside the server.
+- **`docker compose up` fails with `set in .env`.** A required variable is empty; the error names it.
+- **`network zabbix-network not found`.** Step 2 was skipped.
+- **Server restarts while Postgres initializes.** On very first boot the server creates the full schema; give it a minute and check `docker compose -p zabbix logs zabbix-server`.
+
+### Apply `.env` or compose-file changes
+
+```bash
+docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d --force-recreate
+```
+
+## Features
+
+- **Zabbix 7.0 LTS** (supported until 2029) — server, nginx web frontend, and agent2 images move together.
+- **Traefik v3** reverse proxy with automatic HTTP→HTTPS redirect and Let's Encrypt TLS-ALPN certificate issuance.
+- **Dedicated TCP and UDP entrypoints on 10051** so remote agents reach the server through Traefik.
+- **Bundled agent2** monitoring the Docker host itself out of the box.
+- **Basic-auth protected Traefik dashboard** on a separate hostname.
+- **Scheduled PostgreSQL backups** with configurable interval, retention, and destination path, plus a restore script.
+- **Healthchecks** on every service with start-order dependencies.
+- **Credentials required at deploy time** — compose fails fast if `.env` is incomplete.
+
+### Typical use cases
+
+- **Infrastructure monitoring for a fleet** — servers, network gear (SNMP), services, certificates.
+- **Homelab observability** — one box watching everything else, with escalations to email/Telegram.
+- **SMB monitoring without SaaS pricing** — Zabbix is fully featured with no per-host fees.
+- **Staging ground for enterprise Zabbix** — validate the 7.0 LTS shape before a larger rollout.
+
+## Supply chain trust
+
+This repository is a **deployment template**, not a custom Docker image. It orchestrates five upstream images:
+
+- [`traefik`](https://hub.docker.com/_/traefik) — reverse proxy, Docker Hub official image
+- [`zabbix/zabbix-server-pgsql`](https://hub.docker.com/r/zabbix/zabbix-server-pgsql), [`zabbix/zabbix-web-nginx-pgsql`](https://hub.docker.com/r/zabbix/zabbix-web-nginx-pgsql), [`zabbix/zabbix-agent2`](https://hub.docker.com/r/zabbix/zabbix-agent2) — Zabbix upstream
+- [`postgres`](https://hub.docker.com/_/postgres) — PostgreSQL, Docker Hub official image
+
+All five are pinned to `tag@sha256:<digest>` as interpolation defaults in the compose file's `x-images` block. Compose pulls by digest, not by tag — and `git pull` alone delivers the version combination this repository has tested. Setting an `*_IMAGE_TAG` variable in `.env` overrides the default when you deliberately want a different version.
+
+The weekly `check-pin-freshness` CI job re-resolves each pinned tag against its registry, compares the pinned Zabbix version against the latest patch of its LTS line via endoflife.date (and fails loudly if the line itself goes end-of-life), and checks the Traefik minor against the latest upstream release. CI's **Deployment Verification** workflow runs on every push, pull request, and every Monday at 06:00 UTC. GitHub Actions are pinned by commit SHA; Dependabot keeps those fresh.
+
+## Production checklist
+
+Before relying on this for real monitoring, check every box:
+
+- [ ] **Change the stock frontend login.** Zabbix ships `Admin` / `zabbix` — change it on first login and create named users.
+- [ ] **Strong secrets.** `ZABBIX_DB_PASSWORD` at 24+ random characters; regenerate the Traefik dashboard BCrypt hash per deployment.
+- [ ] **Decide about port 10051 exposure.** If all monitored hosts are on your networks, restrict source IPs on the firewall.
+- [ ] **Host-mount the backups volume** for disaster recovery — bind `ZABBIX_POSTGRES_BACKUPS_PATH` to a host path covered by your off-host backup solution.
+- [ ] **Verify Let's Encrypt cert issuance** in the Traefik logs on first start.
+- [ ] **Tune `ZABBIX_CACHESIZE`** (default 1G) to your host count.
+- [ ] **Plan upgrades within the LTS line.** The pins track 7.0 LTS; the server migrates the schema automatically on minor bumps. Back up first — there is no downgrade path.
 
 ## Backups
 
-The `backups` container in the configuration is responsible for the following:
+The `backups` container performs a `pg_dump | gzip` → prune → sleep loop against the Zabbix database. All knobs (`ZABBIX_BACKUP_INIT_SLEEP`, `ZABBIX_BACKUP_INTERVAL`, `ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS`, paths) are configured via `.env` with compose-level defaults (30-minute warm-up, 24-hour interval, 7-day retention).
 
-1. **Database Backup**: Creates compressed backups of the PostgreSQL database using pg_dump.
-Customizable backup path, filename pattern, and schedule through variables like `POSTGRES_BACKUPS_PATH`, `POSTGRES_BACKUP_NAME`, and `BACKUP_INTERVAL`.
+**Verify backups are running:**
 
-2. **Backup Pruning**: Periodically removes backups exceeding a specified age to manage storage. Customizable pruning schedule and age threshold with `POSTGRES_BACKUP_PRUNE_DAYS` and `DATA_BACKUP_PRUNE_DAYS`.
+```bash
+docker compose -p zabbix logs backups | tail -5
+docker compose -p zabbix exec backups ls -la /srv/zabbix-postgres/backups/
+```
 
-By utilizing this container, consistent and automated backups of the essential components of your instance are ensured. Moreover, efficient management of backup storage and tailored backup routines can be achieved through easy and flexible configuration using environment variables.
+**Restore** with the interactive script (lists backups, prompts for selection, stops the server, drops + recreates + restores the database, starts the server):
 
-## zabbix-restore-database.sh Description
+```bash
+chmod +x zabbix-restore-database.sh
+./zabbix-restore-database.sh
+```
 
-This script facilitates the restoration of a database backup:
+## Testing
 
-1. **Identify Containers**: It first identifies the service and backups containers by name, finding the appropriate container IDs.
+The [Deployment Verification](https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml?query=branch%3Amain) workflow runs on every push, pull request, and every Monday at 06:00 UTC:
 
-2. **List Backups**: Displays all available database backups located at the specified backup path.
+1. **Lint** — shellcheck on the restore script, actionlint on the workflow.
+2. **Trivy scans** of all five pinned images (CRITICAL/HIGH, SARIF to the Security tab).
+3. **Pin freshness** (weekly/manual) — digest drift, LTS-line currency via endoflife.date, Traefik release lag.
+4. **Deploy-and-test** — boots the full stack with ephemeral credentials, waits for the zabbix-server healthcheck, then requires the web API (`apiinfo.version`) to answer through Traefik — the shipped configuration must produce a working Zabbix, not just started containers.
 
-3. **Select Backup**: Prompts the user to copy and paste the desired backup name from the list to restore the database.
+A green run is the authoritative proof that the template deploys end-to-end.
 
-4. **Stop Service**: Temporarily stops the service to ensure data consistency during restoration.
+## Security Notes
 
-5. **Restore Database**: Executes a sequence of commands to drop the current database, create a new one, and restore it from the selected compressed backup file.
+- Credentials are read from `.env` at deploy time; `.env` is gitignored and compose fails fast on missing required variables.
+- **Pre-rotation advisory.** Releases before v1.0.0 (2026-08-31) shipped a tracked `.env` with a generated-looking database password. Rotate `ZABBIX_DB_PASSWORD` if your deployment reused it.
+- The database listens only on the internal network; only 80/443/10051 are exposed through Traefik.
+- Upstream image digests are pinned; the weekly freshness job flags drift loudly.
 
-6. **Start Service**: Restarts the service after the restoration is completed.
+---
 
-To make the `zabbix-restore-database.shh` script executable, run the following command:
-
-`chmod +x zabbix-restore-database.sh`
-
-Usage of this script ensures a controlled and guided process to restore the database from an existing backup.
-
-## Author
-
-hey everyone,
-
-💾 I’ve been in the IT game for over 20 years, cutting my teeth with some big names like [IBM](https://www.linkedin.com/in/heyvaldemar/), [Thales](https://www.linkedin.com/in/heyvaldemar/), and [Amazon](https://www.linkedin.com/in/heyvaldemar/). These days, I wear the hat of a DevOps Consultant and Team Lead, but what really gets me going is Docker and container technology - I’m kind of obsessed!
-
-💛 I have my own IT [blog](https://www.heyvaldemar.com/), where I’ve built a [community](https://discord.gg/AJQGCCBcqf) of DevOps enthusiasts who share my love for all things Docker, containers, and IT technologies in general. And to make sure everyone can jump on this awesome DevOps train, I write super detailed guides (seriously, they’re foolproof!) that help even newbies deploy and manage complex IT solutions.
-
-🚀 My dream is to empower every single person in the DevOps community to squeeze every last drop of potential out of Docker and container tech.
-
-🐳 As a [Docker Captain](https://www.docker.com/captains/vladimir-mikhalev/), I’m stoked to share my knowledge, experiences, and a good dose of passion for the tech. My aim is to encourage learning, innovation, and growth, and to inspire the next generation of IT whizz-kids to push Docker and container tech to its limits.
-
-Let’s do this together!
-
-## My 2D Portfolio
-
-🕹️ Click into [sre.gg](https://www.sre.gg/) — my virtual space is a 2D pixel-art portfolio inviting you to interact with elements that encapsulate the milestones of my DevOps career.
-
-## My Courses
-
-🎓 Dive into my [comprehensive IT courses](https://www.heyvaldemar.com/courses/) designed for enthusiasts and professionals alike. Whether you're looking to master Docker, conquer Kubernetes, or advance your DevOps skills, my courses provide a structured pathway to enhancing your technical prowess.
-
-🔑 [Each course](https://www.udemy.com/user/heyvaldemar/) is built from the ground up with real-world scenarios in mind, ensuring that you gain practical knowledge and hands-on experience. From beginners to seasoned professionals, there's something here for everyone to elevate their IT skills.
-
-## My Services
-
-💼 Take a look at my [service catalog](https://www.heyvaldemar.com/services/) and find out how we can make your technological life better. Whether it's increasing the efficiency of your IT infrastructure, advancing your career, or expanding your technological horizons — I'm here to help you achieve your goals. From DevOps transformations to building gaming computers — let's make your technology unparalleled!
-
-## Patreon Exclusives
-
-🏆 Join my [Patreon](https://www.patreon.com/heyvaldemar) and dive deep into the world of Docker and DevOps with exclusive content tailored for IT enthusiasts and professionals. As your experienced guide, I offer a range of membership tiers designed to suit everyone from newbies to IT experts.
-
-## My Recommendations
-
-📕 Check out my collection of [essential DevOps books](https://kit.co/heyvaldemar/essential-devops-books)\
-🖥️ Check out my [studio streaming and recording kit](https://kit.co/heyvaldemar/my-studio-streaming-and-recording-kit)\
-📡 Check out my [streaming starter kit](https://kit.co/heyvaldemar/streaming-starter-kit)
-
-## Follow Me
-
-🎬 [YouTube](https://www.youtube.com/channel/UCf85kQ0u1sYTTTyKVpxrlyQ?sub_confirmation=1)\
-🐦 [X / Twitter](https://twitter.com/heyvaldemar)\
-🎨 [Instagram](https://www.instagram.com/heyvaldemar/)\
-🐘 [Mastodon](https://mastodon.social/@heyvaldemar)\
-🧵 [Threads](https://www.threads.net/@heyvaldemar)\
-🎸 [Facebook](https://www.facebook.com/heyvaldemarFB/)\
-🧊 [Bluesky](https://bsky.app/profile/heyvaldemar.bsky.social)\
-🎥 [TikTok](https://www.tiktok.com/@heyvaldemar)\
-💻 [LinkedIn](https://www.linkedin.com/in/heyvaldemar/)\
-📣 [daily.dev Squad](https://app.daily.dev/squads/devopscompass)\
-🧩 [LeetCode](https://leetcode.com/u/heyvaldemar/)\
-🐈 [GitHub](https://github.com/heyvaldemar)
-
-## Community of IT Experts
-
-👾 [Discord](https://discord.gg/AJQGCCBcqf)
-
-## Refill My Coffee Supplies
-
-💖 [PayPal](https://www.paypal.com/paypalme/heyvaldemarCOM)\
-🏆 [Patreon](https://www.patreon.com/heyvaldemar)\
-💎 [GitHub](https://github.com/sponsors/heyvaldemar)\
-🥤 [BuyMeaCoffee](https://www.buymeacoffee.com/heyvaldemar)\
-🍪 [Ko-fi](https://ko-fi.com/heyvaldemar)
-
-🌟 **Bitcoin (BTC):** bc1q2fq0k2lvdythdrj4ep20metjwnjuf7wccpckxc\
-🔹 **Ethereum (ETH):** 0x76C936F9366Fad39769CA5285b0Af1d975adacB8\
-🪙 **Binance Coin (BNB):** bnb1xnn6gg63lr2dgufngfr0lkq39kz8qltjt2v2g6\
-💠 **Litecoin (LTC):** LMGrhx8Jsx73h1pWY9FE8GB46nBytjvz8g
+## About the maintainer
 
 <div align="center">
 
-### Show some 💜 by starring some of the [repositories](https://github.com/heyValdemar?tab=repositories)!
+**Maintained by [Vladimir Mikhalev](https://github.com/heyvaldemar)** — Docker Captain · IBM Champion · AWS Community Builder
 
-![octocat](https://user-images.githubusercontent.com/10498744/210113490-e2fad07f-4488-4da8-a656-b9abbdd8cb26.gif)
+[YouTube](https://www.youtube.com/channel/UCf85kQ0u1sYTTTyKVpxrlyQ?sub_confirmation=1) · [Blog](https://heyvaldemar.com) · [LinkedIn](https://www.linkedin.com/in/heyvaldemar/)
 
 </div>
-
-![footer](https://user-images.githubusercontent.com/10498744/210157572-1fca0242-8af2-46a6-bfa3-666ffd40ebde.svg)
