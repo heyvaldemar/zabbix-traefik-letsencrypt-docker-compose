@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _(no unreleased changes yet)_
 
+## [1.2.0] - 2026-09-02
+
+### Added
+
+- **`tests/e2e-backup-restore.sh`** — seven end-to-end scenarios against
+  the live stack, run by CI on every push and by you locally: the
+  required-variable guard fires, a backup is produced, it is a readable
+  archive with real dump content (and a readable data `tar.gz` where the
+  stack has one), a database outage is reported as `FAILED`, **restore
+  genuinely replaces database state** (a marker row inserted after the
+  baseline backup is gone after restoring it), and pruning removes only
+  old files.
+
 ## [1.1.0] - 2026-09-02
 
 ### Fixed
@@ -86,6 +99,7 @@ v1.2.0.
 - Shellcheck findings in the restore script (`read -r`, removed an unused
   unquoted variable).
 
-[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/releases/tag/v1.0.0
