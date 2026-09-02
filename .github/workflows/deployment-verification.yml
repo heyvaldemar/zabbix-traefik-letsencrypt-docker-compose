@@ -226,6 +226,8 @@ jobs:
           TRAEFIK_BASIC_AUTH=traefikadmin:\$\$2y\$\$10\$\$sMzJfirKC75x/hVpiINeZOiSm.Jkity9cn4KwNkRvO7hSQVFc5FLO
           ZABBIX_DB_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
           ZABBIX_DASHBOARD_HOSTNAME=${APP_HOSTNAME}
+          ZABBIX_BACKUP_INIT_SLEEP=15s
+          ZABBIX_BACKUP_INTERVAL=60s
           EOF
           echo "Generated ephemeral .env for CI run"
 
@@ -263,6 +265,19 @@ jobs:
           done'
           curl -fsk -X POST "https://$APP_HOSTNAME/api_jsonrpc.php" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}'
           echo
+
+      - name: Verify a backup is produced and valid
+        # The loop logs 'Backup OK' per cycle; CI additionally proves the
+        # artefacts are readable archives with the expected content.
+        run: |
+          # shellcheck disable=SC2016
+          timeout 5m bash -c 'until docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" exec -T backups sh -c "ls /srv/zabbix-postgres/backups/*.gz" >/dev/null 2>&1; do
+            echo "Waiting for the first backup cycle..."
+            sleep 10
+          done'
+          docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" exec -T backups sh -c 'f=$(ls -t /srv/zabbix-postgres/backups/*.gz | head -1) && gunzip -t "$f" && gunzip -c "$f" | head -5 | grep -qE "PostgreSQL database dump" && echo "Database backup valid: $f"'
+          docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" logs backups | grep -q "backup OK" || { echo "::error::no 'backup OK' line in the backups log"; exit 1; }
+          docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" logs backups | grep "backup FAILED" && { echo "::error::the backups log reports a failure"; exit 1; } || true
 
       - name: Wait for the Traefik dashboard to be ready
         run: |
