@@ -27,6 +27,16 @@ volumes:
 services:
   postgres:
     image: *postgres-image
+    # Resource limits as .env-overridable defaults (e.g. ZABBIX_POSTGRES_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${ZABBIX_POSTGRES_MEMORY_LIMIT:-1g}
+          cpus: "${ZABBIX_POSTGRES_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: ${ZABBIX_POSTGRES_MEMORY_RESERVATION:-128m}
+          cpus: "${ZABBIX_POSTGRES_CPU_RESERVATION:-0.25}"
     volumes:
       - zabbix-postgres:/var/lib/postgresql/data
     environment:
@@ -45,6 +55,16 @@ services:
 
   zabbix-server:
     image: *zabbix-server-image
+    # Resource limits as .env-overridable defaults (e.g. ZABBIX_SERVER_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${ZABBIX_SERVER_MEMORY_LIMIT:-1g}
+          cpus: "${ZABBIX_SERVER_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: ${ZABBIX_SERVER_MEMORY_RESERVATION:-128m}
+          cpus: "${ZABBIX_SERVER_CPU_RESERVATION:-0.25}"
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
@@ -87,6 +107,16 @@ services:
 
   zabbix-dashboard:
     image: *zabbix-web-image
+    # Resource limits as .env-overridable defaults (e.g. ZABBIX_DASHBOARD_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${ZABBIX_DASHBOARD_MEMORY_LIMIT:-512m}
+          cpus: "${ZABBIX_DASHBOARD_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: ${ZABBIX_DASHBOARD_MEMORY_RESERVATION:-64m}
+          cpus: "${ZABBIX_DASHBOARD_CPU_RESERVATION:-0.25}"
     environment:
       DB_SERVER_HOST: postgres
       DB_SERVER_PORT: 5432
@@ -138,6 +168,16 @@ services:
 
   zabbix-agent:
     image: *zabbix-agent-image
+    # Resource limits as .env-overridable defaults (e.g. ZABBIX_AGENT_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${ZABBIX_AGENT_MEMORY_LIMIT:-512m}
+          cpus: "${ZABBIX_AGENT_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: ${ZABBIX_AGENT_MEMORY_RESERVATION:-64m}
+          cpus: "${ZABBIX_AGENT_CPU_RESERVATION:-0.25}"
     environment:
       ZBX_HOSTNAME: Zabbix server
       ZBX_SERVER_HOST: zabbix-server
@@ -150,6 +190,16 @@ services:
 
   traefik:
     image: *traefik-image
+    # Resource limits as .env-overridable defaults (e.g. TRAEFIK_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${TRAEFIK_MEMORY_LIMIT:-256m}
+          cpus: "${TRAEFIK_CPU_LIMIT:-0.5}"
+        reservations:
+          memory: ${TRAEFIK_MEMORY_RESERVATION:-64m}
+          cpus: "${TRAEFIK_CPU_RESERVATION:-0.1}"
     command:
       # Set the log level (DEBUG, INFO, WARN, ERROR)
       - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
@@ -228,6 +278,16 @@ services:
 
   backups:
     image: *postgres-image
+    # Resource limits as .env-overridable defaults (e.g. ZABBIX_BACKUPS_MEMORY_LIMIT=2g);
+    # the override survives every git pull.
+    deploy:
+      resources:
+        limits:
+          memory: ${ZABBIX_BACKUPS_MEMORY_LIMIT:-256m}
+          cpus: "${ZABBIX_BACKUPS_CPU_LIMIT:-0.5}"
+        reservations:
+          memory: ${ZABBIX_BACKUPS_MEMORY_RESERVATION:-32m}
+          cpus: "${ZABBIX_BACKUPS_CPU_RESERVATION:-0.1}"
     command: >-
       bash -c 'set -o pipefail;
       sleep "$$ZABBIX_BACKUP_INIT_SLEEP";
