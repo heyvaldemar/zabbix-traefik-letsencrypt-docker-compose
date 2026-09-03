@@ -41,7 +41,7 @@ _(no unreleased changes yet)_
 
 ### Added
 
-- **`tests/e2e-backup-restore.sh`** — seven end-to-end scenarios against
+- **`tests/e2e-backup-restore.sh`**: seven end-to-end scenarios against
   the live stack, run by CI on every push and by you locally: the
   required-variable guard fires, a backup is produced, it is a readable
   archive with real dump content (and a readable data `tar.gz` where the
@@ -86,9 +86,9 @@ v1.2.0.
 - **Zabbix bumped 6.4.6 → 7.0.30 LTS** (server, web, and agent2 images move
   together). The 6.4 line has been end-of-life since 2024-12-31; 7.0 is the
   LTS line supported until 2029. The server migrates the database schema
-  automatically on first start — back up before pulling.
+  automatically on first start. Back up before pulling.
 - **Traefik bumped 3.2 → 3.7** (`traefik:3.7@sha256:9c2a54d8…`). Traefik
-  3.2's vendored Docker client cannot talk to Docker Engine 29 — the docker
+  3.2's vendored Docker client cannot talk to Docker Engine 29: the docker
   provider fails in a retry loop and the stack silently serves 404s on
   hosts running current Docker.
 - **All five images pinned by `tag@sha256:digest`** (`postgres:15`
@@ -102,7 +102,7 @@ v1.2.0.
   combination, `.env` carries only secrets and deliberate overrides, and
   an override set in `.env` still wins.
 - Operational variables (log level, timezone, DB names, cache size, backup
-  schedule and paths) now have compose-level defaults — the minimal `.env`
+  schedule and paths) now have compose-level defaults: the minimal `.env`
   is secrets and hostnames only.
 - Backup-loop variables escaped (`$$VAR`) so the container shell resolves
   them at runtime from the `environment:` block, where the compose-level
@@ -119,7 +119,7 @@ v1.2.0.
   upstream release; and a deploy-and-test job that stands up the full
   stack with ephemeral credentials, waits for the zabbix-server
   healthcheck, and requires the web API (`apiinfo.version`) to answer
-  through Traefik — the shipped configuration must produce a working
+  through Traefik: the shipped configuration must produce a working
   Zabbix instance, not just started containers.
 
 ### Fixed
