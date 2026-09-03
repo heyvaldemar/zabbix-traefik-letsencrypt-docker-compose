@@ -62,7 +62,7 @@ _(no unreleased changes yet)_
   required-variable guard fires, a backup is produced, it is a readable
   archive with real dump content (and a readable data `tar.gz` where the
   stack has one), a database outage is reported as `FAILED`, **restore
-  genuinely replaces database state** (a marker row inserted after the
+ replaces database state** (a marker row inserted after the
   baseline backup is gone after restoring it), and pruning removes only
   old files.
 
