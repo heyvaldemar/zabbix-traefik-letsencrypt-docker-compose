@@ -6,11 +6,11 @@
 # CI (Trivy scans, check-pin-freshness, the ephemeral test .env) reads
 # the pins from these lines — this block is the single source of truth.
 x-images:
-  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:3.7@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf}
-  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:15@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f5da8f3acbfe4957}
-  zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:7.0.30-ubuntu@sha256:de9b1471dff77298d5a709b89f275fc5b9ba343058d8deee1f55c7ca9830bb0b}
-  zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:7.0.30-ubuntu@sha256:1e68b65358f6464421f94a6ca627220066a8998d04f6360176b7ef6d984a6031}
-  zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:7.0.30-ubuntu@sha256:504f4bda39dcd0d1e5b120e61966121d21669cf737348a9a47ae04bd32db9f53}
+  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf}}
+  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:9b1d34adbce1dd07ee6e94b4a2cf698884b89bd44a6c9c12f5da8f3acbfe4957}}
+  zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:${ZABBIX_SERVER_IMAGE_VERSION:-7.0.30-ubuntu@sha256:de9b1471dff77298d5a709b89f275fc5b9ba343058d8deee1f55c7ca9830bb0b}}
+  zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:${ZABBIX_WEB_IMAGE_VERSION:-7.0.30-ubuntu@sha256:1e68b65358f6464421f94a6ca627220066a8998d04f6360176b7ef6d984a6031}}
+  zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:${ZABBIX_AGENT_IMAGE_VERSION:-7.0.30-ubuntu@sha256:504f4bda39dcd0d1e5b120e61966121d21669cf737348a9a47ae04bd32db9f53}}
 
 networks:
   zabbix-network:
