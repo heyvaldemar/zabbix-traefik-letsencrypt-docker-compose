@@ -347,11 +347,12 @@ services:
         STAMP="$$(date +%Y-%m-%d_%H-%M)";
         DB_FILE="$$ZABBIX_POSTGRES_BACKUPS_PATH/$$ZABBIX_POSTGRES_BACKUP_NAME-$$STAMP.gz";
         echo "[$$(date -Iseconds)] Starting database backup to $$DB_FILE";
-        if pg_dump -h postgres -p 5432 -d $$ZABBIX_DB_NAME -U $$ZABBIX_DB_USER | gzip > "$$DB_FILE"; then
+        if pg_dump -h postgres -p 5432 -d $$ZABBIX_DB_NAME -U $$ZABBIX_DB_USER | gzip > "$$DB_FILE.partial"; then
+          mv "$$DB_FILE.partial" "$$DB_FILE";
           echo "[$$(date -Iseconds)] Database backup OK: $$DB_FILE ($$(stat -c %s "$$DB_FILE") bytes)";
         else
           echo "[$$(date -Iseconds)] Database backup FAILED - partial file kept as $$DB_FILE.failed for diagnosis" >&2;
-          mv "$$DB_FILE" "$$DB_FILE.failed" 2>/dev/null || true;
+          mv "$$DB_FILE.partial" "$$DB_FILE.failed" 2>/dev/null || true;
         fi;
         if [ "$${ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS:-0}" -ge 1 ]; then
           find "$$ZABBIX_POSTGRES_BACKUPS_PATH" -type f -name "$$ZABBIX_POSTGRES_BACKUP_NAME-*" -mtime "+$$ZABBIX_POSTGRES_BACKUP_PRUNE_DAYS" -delete;
