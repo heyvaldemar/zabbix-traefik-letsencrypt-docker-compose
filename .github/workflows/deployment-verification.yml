@@ -153,6 +153,9 @@ jobs:
           exit "$status"
 
       - name: Compare pinned Zabbix version against its release line
+        # Runs even when the digest comparison above failed, so one run
+        # reports every problem it can see instead of one per day.
+        if: always()
         # Pinned to the 7.0 LTS line on purpose (EOL 2029) — compare against
         # the latest patch of THAT line via endoflife.date, and fail if the
         # line itself has gone end-of-life.
@@ -180,6 +183,9 @@ jobs:
           echo "Zabbix pin ${pinned_version} is current in line ${cycle} (EOL ${eol})"
 
       - name: Compare pinned Traefik minor against the latest release
+        # Runs even when the digest comparison above failed, so one run
+        # reports every problem it can see instead of one per day.
+        if: always()
         run: |
           pin="$(grep -m1 -oE '\$\{TRAEFIK_IMAGE_TAG:-.*' zabbix-traefik-letsencrypt-docker-compose.yml | sed -E -e ':a' -e 's/\$\{[A-Z0-9_]+:-([^{}]*)\}/\1/' -e 'ta')"
           ref="${pin%%@*}"
