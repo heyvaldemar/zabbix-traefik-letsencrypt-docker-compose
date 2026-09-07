@@ -9,6 +9,7 @@
 - [Prerequisites](#prerequisites)
 - [Getting started](#getting-started)
 - [Features](#features)
+- [Updating](#updating)
   - [Typical use cases](#typical-use-cases)
 - [Supply chain trust](#supply-chain-trust)
 - [Production checklist](#production-checklist)
@@ -121,6 +122,10 @@ docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix up -d 
 - **Homelab observability**: one box watching everything else, with escalations to email/Telegram.
 - **SMB monitoring without SaaS pricing**: Zabbix is fully featured with no per-host fees.
 - **Staging ground for enterprise Zabbix**: validate the 7.0 LTS shape before a larger rollout.
+
+## Updating
+
+`./update.sh` moves this checkout to the latest release tag — a combination this repository's CI has booted, upgraded from the previous release on the same volumes, and smoke-tested — and then runs `docker compose up -d`. It refuses to cross a major version unattended, refuses to run over local changes, and names any variable that became required since your version before anything has moved. `./update.sh --dry-run` says what would happen. Every release cut by fleet triage also carries what upstream changed, read from its release notes against this compose file.
 
 ## Supply chain trust
 
