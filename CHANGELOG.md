@@ -15,8 +15,12 @@ _(no unreleased changes yet)_
 
 - **Zabbix 7.0.30 moved to 7.0.31** across the server, web and agent images, with
   fresh digests. The freshness check found the lag and could not fix it on its
-  own: the tag is `7.0.31-ubuntu`, a version with a flavour suffix, and the
-  automatic bump only recognises a bare version.
+  own, and the reason turned out not to be the one first written here: the check
+  reports `is behind its line: pinned 7.0.30, latest in 7.0 is 7.0.31`, and the
+  triage that acts on these alarms read one other wording of that sentence.
+  Measured across the fleet afterwards, fifty-one alarms matched that wording and
+  fifty-one did not, every Traefik pin among them. The parsing was fixed in
+  fleet-ops, so the next lag here moves on its own.
 
   Asked of the registry rather than of release notes, the three images differ
   from their predecessors in one field each — `ZBX_VERSION` `7.0.30` -> `7.0.31`
