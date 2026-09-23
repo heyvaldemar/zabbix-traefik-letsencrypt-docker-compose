@@ -173,6 +173,8 @@ chmod +x zabbix-restore-database.sh
 ./zabbix-restore-database.sh
 ```
 
+It lists the backups and asks, or takes a file name as its argument; it reads every path and credential from the running backups container, and CI runs it on every push.
+
 ## Resource limits
 
 Every service carries memory and CPU limits plus reservations as compose-level defaults: the same values CI boots the stack under. Override any of them in `.env` (the knobs and their defaults are listed in `.env.example`, e.g. `TRAEFIK_MEMORY_LIMIT=512m`) and the override survives every `git pull`. If a service is OOM-killed under real load, `docker inspect <container> --format '{{.State.OOMKilled}}'` says so; raise its `_MEMORY_LIMIT` and recreate.

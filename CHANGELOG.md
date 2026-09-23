@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI had never run the restore script.** It carried the database name, user
+  and backup directory as literals, wrong for any `.env` that sets them
+  differently, and found its containers with a name filter that misses them
+  under any `-p` but the default. It now takes every path, name and credential
+  from the running backups container, accepts the backup file name as an
+  argument, stops the application while it works and starts it again whatever
+  happens, and CI runs it: a marker written after a backup must be gone once
+  that backup is restored.
+
 ### Changed
 
 - **The freshness check has its own workflow, Pin Freshness.** It ran inside Deployment Verification, whose badge is the one at the top of this README. Across the fleet, nine red runs in ten were a pin one version behind - which the fleet's triage moves within the day - and a reader cannot tell that from a stack that does not boot. The badge now says whether the stack boots. The job itself is unchanged.
