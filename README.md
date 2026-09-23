@@ -83,7 +83,7 @@ docker compose -f zabbix-traefik-letsencrypt-docker-compose.yml -p zabbix ps
 curl -fsS -X POST "https://${ZABBIX_DASHBOARD_HOSTNAME}/api_jsonrpc.php" \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","method":"apiinfo.version","params":{},"id":1}'
-# Expected: {"jsonrpc":"2.0","result":"7.0.30","id":1}
+# Expected: {"jsonrpc":"2.0","result":"7.0.31","id":1}
 
 # Traefik issued a certificate:
 docker compose -p zabbix logs traefik | grep -i "adding certificate"

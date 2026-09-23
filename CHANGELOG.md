@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _(no unreleased changes yet)_
 
+### Changed
+
+- **Zabbix 7.0.30 moved to 7.0.31** across the server, web and agent images, with
+  fresh digests. The freshness check found the lag and could not fix it on its
+  own: the tag is `7.0.31-ubuntu`, a version with a flavour suffix, and the
+  automatic bump only recognises a bare version.
+
+  Asked of the registry rather than of release notes, the three images differ
+  from their predecessors in one field each — `ZBX_VERSION` `7.0.30` -> `7.0.31`
+  — and in nothing else: same user, entrypoint, command, ports, volumes and
+  healthcheck. 7.0 stays the pinned line, which is supported until 2027.
+
 ## [1.8.3] - 2026-09-21
 
 ### Security
