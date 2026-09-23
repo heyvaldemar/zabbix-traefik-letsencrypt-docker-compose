@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.9.1] - 2026-09-23
+
 ### Fixed
 
 - **CI had never run the restore script.** It carried the database name, user
