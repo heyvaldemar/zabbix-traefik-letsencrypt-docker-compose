@@ -141,6 +141,23 @@ Two override levels exist per image. `<PREFIX>_IMAGE_VERSION` in `.env` swaps on
 
 The daily `check-pin-freshness` CI job re-resolves each pinned tag against its registry, compares the pinned Zabbix version against the latest patch of its LTS line via endoflife.date (and fails loudly if the line itself goes end-of-life), and checks the Traefik minor against the latest upstream release. CI's Deployment Verification workflow runs on every push, pull request, and every day at 06:00 UTC. GitHub Actions are pinned by commit SHA; Dependabot keeps those fresh.
 
+### Verify what you deploy
+
+Every release from v1.9.1 on carries three files made on GitHub's runner with a short-lived identity and no stored key: `zabbix-traefik-letsencrypt-docker-compose-<tag>.tar.gz`, a `git archive` of exactly the tree the tag points at; `zabbix-traefik-letsencrypt-docker-compose-<tag>.tar.gz.sigstore.json`, a keyless [Sigstore](https://www.sigstore.dev/) signature over it; and `zabbix-traefik-letsencrypt-docker-compose-<tag>.intoto.jsonl`, [SLSA](https://slsa.dev/) build provenance from the SLSA generator. To check them with nothing from this repository trusted:
+
+```bash
+cosign verify-blob zabbix-traefik-letsencrypt-docker-compose-<tag>.tar.gz \
+  --bundle zabbix-traefik-letsencrypt-docker-compose-<tag>.tar.gz.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+slsa-verifier verify-artifact zabbix-traefik-letsencrypt-docker-compose-<tag>.tar.gz \
+  --provenance-path zabbix-traefik-letsencrypt-docker-compose-<tag>.intoto.jsonl \
+  --source-uri github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose
+```
+
+Add `--source-tag <tag>` for a release published after 24 September 2026, which is signed by the run that published it. The five releases before that date were signed by a run started by hand on `main`, so their provenance names the branch, not the tag; the archive is still the tag's tree, and the signature still belongs to this repository's workflow. The workflow that makes them is [`release-assets.yml`](.github/workflows/release-assets.yml).
+
 ## Production checklist
 
 Before relying on this for real monitoring, check every box:
