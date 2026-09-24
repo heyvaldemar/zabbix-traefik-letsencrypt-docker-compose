@@ -114,7 +114,7 @@ wait_healthy() {  # every container running and healthy, or a one-shot that exit
   local file="$1" bad=""
   for _ in $(seq 1 90); do
     bad="$(docker compose -f "$file" -p "$PROJECT" ps -a --format json \
-      | jq -rs --arg ignore " ${DR_IGNORE_SERVICES:-} " '[.[] | select(($ignore | contains(" " + .Service + " ")) | not) | select((.State == "running" and (.Health == "" or .Health == "healthy")) or (.State == "exited" and .ExitCode == 0) | not)] | map("\(.Service):\(.State)/\(.Health)") | join(" ")')"
+      | jq -rs --arg ignore " ${DR_IGNORE_SERVICES:-} " '[.[] | . as $c | select(($ignore | contains(" " + $c.Service + " ")) | not) | select((.State == "running" and (.Health == "" or .Health == "healthy")) or (.State == "exited" and .ExitCode == 0) | not)] | map("\(.Service):\(.State)/\(.Health)") | join(" ")')"
     [ -z "$bad" ] && return 0
     sleep 10
   done
