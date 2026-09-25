@@ -7,7 +7,7 @@
 # the pins from these lines — this block is the single source of truth.
 x-images:
   traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:24841fe2de7304c149343d877d2923b4c8800a38ba015dea9174c23b20e344a0}}
-  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550}}
+  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:dfbbb0ad8cab91d41e99123664e37a9b25d0413426d4fb3154e4d668e5d35246}}
   zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:${ZABBIX_SERVER_IMAGE_VERSION:-7.0.31-ubuntu@sha256:5b51384f82fa70297f2c02b78238f5fef052b5619b4d26e905740da2dd110c02}}
   zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:${ZABBIX_WEB_IMAGE_VERSION:-7.0.31-ubuntu@sha256:a5e13d16bab28fb7de10dc2e5a6c8a002ec08482aea23fe67cf48b59206bc71f}}
   zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:${ZABBIX_AGENT_IMAGE_VERSION:-7.0.31-ubuntu@sha256:84a2378ad9224c53ab5aace096457d7ac3c22c2a2cc7d79c1d33572068702016}}
