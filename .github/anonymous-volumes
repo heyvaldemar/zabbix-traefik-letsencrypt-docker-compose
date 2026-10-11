@@ -1,0 +1,5 @@
+# Anonymous volumes this stack keeps on purpose, one per line: service, path, reason.
+# The deployment verification fails on any anonymous volume not listed here, because
+# an anonymous volume is never backed up and is replaced by an empty one on down/up.
+zabbix-server /var/lib/zabbix/export real-time export files, written only when ExportDir is set
+zabbix-server /var/lib/zabbix/snmptraps SNMP trap files, written only by an snmptraps container this stack does not run
