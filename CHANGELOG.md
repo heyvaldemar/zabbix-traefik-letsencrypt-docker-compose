@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.10.5] - 2026-10-21
+
 ### Changed
 
 - **`zabbix/zabbix-web-nginx-pgsql:7.0.31-ubuntu` moved to `zabbix/zabbix-web-nginx-pgsql:7.0.32-ubuntu`.** The freshness check reported the lag; the deploy job booted the stack on the new image before this landed.
@@ -284,7 +288,8 @@ v1.2.0.
 - Shellcheck findings in the restore script (`read -r`, removed an unused
   unquoted variable).
 
-[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.4...HEAD
+[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.5...HEAD
+[1.10.5]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.1...v1.10.2
