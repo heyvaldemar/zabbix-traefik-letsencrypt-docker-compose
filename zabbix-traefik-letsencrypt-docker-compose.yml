@@ -6,11 +6,11 @@
 # CI (Trivy scans, check-pin-freshness, the ephemeral test .env) reads
 # the pins from these lines — this block is the single source of truth.
 x-images:
-  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:6d3e069ee484ab1da5adfdda555a75eb9b1545ef09096a0cc7c3043101986a20}}
-  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:c99dd5066e988cd61a72ffe962da08e277eecaba000bbdda0bdaf9f63b56c174}}
-  zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:${ZABBIX_SERVER_IMAGE_VERSION:-7.0.32-ubuntu@sha256:89d38cbb8c22ccfc45c0f23ea674047f003a828594094c47d89746d49cc96e3d}}
-  zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:${ZABBIX_WEB_IMAGE_VERSION:-7.0.32-ubuntu@sha256:9058a546d62ccc0f47e31e8baa99df2def10de9b1388a0d9026b69600beb2cc1}}
-  zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:${ZABBIX_AGENT_IMAGE_VERSION:-7.0.32-ubuntu@sha256:dc495d959d093b46b2fea1f78ab597312442bd209036736a069f321acb6dbd7f}}
+  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:22a759fb803abb5c3a7ba5d5a55a201c5fb0fc8993d5c72c47a89075e64f1953}}
+  postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:baa22e6286bf832cb147b8bb5aa9d8bc999846d69c21d11bf63f58fbeed1fa48}}
+  zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:${ZABBIX_SERVER_IMAGE_VERSION:-7.0.32-ubuntu@sha256:bdff363914d3d7a5a7fd267462000ad44c8a1969fd063a25b35ebaddc8408020}}
+  zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:${ZABBIX_WEB_IMAGE_VERSION:-7.0.32-ubuntu@sha256:5a85414cadc661cfa23575be3b0aa9cd061f2510f918409b69bfb71b2b2d406c}}
+  zabbix-agent: &zabbix-agent-image ${ZABBIX_AGENT_IMAGE_TAG:-zabbix/zabbix-agent2:${ZABBIX_AGENT_IMAGE_VERSION:-7.0.32-ubuntu@sha256:2f044a5b601151a963d8000c2f9086302b4f2d48c57866460b2cf800f40629e0}}
 
 networks:
   zabbix-network:

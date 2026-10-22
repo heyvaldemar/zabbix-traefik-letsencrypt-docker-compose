@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Security
+
+- **`zabbix/zabbix-web-nginx-pgsql:7.0.32-ubuntu` was rebuilt upstream**; the pin moved from `sha256:9058a546d62c…` to `sha256:5a85414cadc6…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
+- **`zabbix/zabbix-server-pgsql:7.0.32-ubuntu` was rebuilt upstream**; the pin moved from `sha256:89d38cbb8c22…` to `sha256:bdff363914d3…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
+- **`postgres:15` was rebuilt upstream**; the pin moved from `sha256:c99dd5066e98…` to `sha256:baa22e6286bf…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
+- **`zabbix/zabbix-agent2:7.0.32-ubuntu` was rebuilt upstream**; the pin moved from `sha256:dc495d959d09…` to `sha256:2f044a5b6011…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
+- **`traefik:3.7` was rebuilt upstream**; the pin moved from `sha256:6d3e069ee484…` to `sha256:22a759fb803a…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
 
 ## [1.10.5] - 2026-10-21
 
