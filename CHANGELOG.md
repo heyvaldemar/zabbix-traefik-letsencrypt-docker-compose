@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.10.6] - 2026-10-22
+
 ### Security
 
 - **`zabbix/zabbix-web-nginx-pgsql:7.0.32-ubuntu` was rebuilt upstream**; the pin moved from `sha256:9058a546d62c…` to `sha256:5a85414cadc6…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
@@ -294,7 +298,8 @@ v1.2.0.
 - Shellcheck findings in the restore script (`read -r`, removed an unused
   unquoted variable).
 
-[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.5...HEAD
+[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.6...HEAD
+[1.10.6]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.2...v1.10.3
