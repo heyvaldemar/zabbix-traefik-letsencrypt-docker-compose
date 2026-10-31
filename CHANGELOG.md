@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.10.11] - 2026-10-31
+
 ### Security
 
 - **`traefik:3.7` was rebuilt upstream**; the pin moved from `sha256:1336e85aaed2…` to `sha256:e9338a01a433…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
@@ -324,7 +328,8 @@ v1.2.0.
 - Shellcheck findings in the restore script (`read -r`, removed an unused
   unquoted variable).
 
-[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.10...HEAD
+[Unreleased]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.11...HEAD
+[1.10.11]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.10...v1.10.11
 [1.10.10]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.9...v1.10.10
 [1.10.9]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.8...v1.10.9
 [1.10.8]: https://github.com/heyvaldemar/zabbix-traefik-letsencrypt-docker-compose/compare/v1.10.7...v1.10.8
