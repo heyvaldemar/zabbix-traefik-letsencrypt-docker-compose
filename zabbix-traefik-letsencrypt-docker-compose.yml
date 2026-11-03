@@ -6,7 +6,7 @@
 # CI (Trivy scans, check-pin-freshness, the ephemeral test .env) reads
 # the pins from these lines — this block is the single source of truth.
 x-images:
-  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:e9338a01a43389362bdef90afd4ff4a30dd6c0a2e1b0ce00c5e0f52659aa2d9c}}
+  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:68ae5fe5b64ca166704b746a9e8afcd385e36b3f569a5691401bf652d57b3748}}
   postgres: &postgres-image ${ZABBIX_POSTGRES_IMAGE_TAG:-postgres:${ZABBIX_POSTGRES_IMAGE_VERSION:-15@sha256:40e8c839f86c404f9bd1c456bb83f11b205f2cd95d753b34c2d074e89ecee786}}
   zabbix-server: &zabbix-server-image ${ZABBIX_SERVER_IMAGE_TAG:-zabbix/zabbix-server-pgsql:${ZABBIX_SERVER_IMAGE_VERSION:-7.0.32-ubuntu@sha256:062892cac3bec8f0f101db7f9c651f229bf737dab384271922fcc4be2caa2a6a}}
   zabbix-web: &zabbix-web-image ${ZABBIX_WEB_IMAGE_TAG:-zabbix/zabbix-web-nginx-pgsql:${ZABBIX_WEB_IMAGE_VERSION:-7.0.32-ubuntu@sha256:5a85414cadc661cfa23575be3b0aa9cd061f2510f918409b69bfb71b2b2d406c}}
